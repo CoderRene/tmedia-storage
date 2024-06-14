@@ -9,6 +9,7 @@ clone the repo and follow the expo build guide to build the apk.
 - Transfers your phone's DCIM folder to the remote server
 - It supports upload of hundreds and thousands of images from your phone.
 - Can also be able to upload videos.
+- View your stored images and videos directly at the app.
 
 ## Technologies
 This project was made possible by Expo, React Native, Android Studio and Node.js,
