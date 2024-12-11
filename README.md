@@ -2,8 +2,7 @@
 
 ## Description
 - A media storage that stores image and videos from smartphone to the remote server
-- Made to transfer my personal hundreds of images and videos to my own server to free some phone's storage. You can use this too! just 
-clone the repo and follow the expo build guide to build the apk.
+- Made to transfer my personal hundreds of images and videos to my own server to free some phone's storage. 
 
 ## Features
 - Transfers your phone's DCIM folder to the remote server
