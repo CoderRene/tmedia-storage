@@ -57,7 +57,6 @@ export function FolderUploadSelection({ open, onClose }: FolderSelectionProps) {
             buttonPositive: 'OK',
           },
         );
-        console.log('Permission granted:', granted);
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
           const message = granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN 
             ? 'Permission denied. Please enable storage permission in app settings.' 
@@ -106,12 +105,9 @@ export function FolderUploadSelection({ open, onClose }: FolderSelectionProps) {
     setIsFetchingFiles(true);
     setOpenConfirmation(true);
 
-    console.log('item: ', item.path);
-
     setTimeout(async () => {
       try {
         const result = await RNFS.readDir(item.path);
-        console.log('readDir result:', result);
         setFiles(result);
         setIsFetchingFiles(false);
       } catch (error) {

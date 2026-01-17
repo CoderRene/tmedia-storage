@@ -14,10 +14,7 @@ export function useFolderService() {
     if (!isVideo) {
       try {
         let exif = await RNExif.getExif(media.uri);
-        console.log('exif: ', exif);
         exif = exif.exif;
-
-        console.log('exif: ', exif.DateTime);
         
         if (exif.DateTimeOriginal) {
           const parts = exif.DateTimeOriginal.split(' ');
@@ -30,10 +27,8 @@ export function useFolderService() {
           const datePart = parts[0].replace(/:/g, '-');
           const timePart = parts[1];
           const formattedDate = `${datePart}T${timePart}`;
-          console.log('format: ', formattedDate);
           
           creationDate = new Date(formattedDate).toISOString();
-          console.log('date: ', creationDate);
         }
       } catch (e) {
         // Fallback to timestamp if EXIF read fails
