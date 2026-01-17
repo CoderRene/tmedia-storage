@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, useColorScheme } from "react-native";
 import Modal from "react-native-modal/dist/modal";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
@@ -16,6 +16,8 @@ type ThemedModalProps = {
 
 export function ThemedConfirmationModal({ isVisible, title, onPressNo, onPressYes, noTxt, yesTxt, warningMsg }: ThemedModalProps) {
 
+  const colorScheme = useColorScheme();
+
   return (
     <Modal isVisible={isVisible}>
       <ThemedView style={styles.container}>
@@ -27,10 +29,12 @@ export function ThemedConfirmationModal({ isVisible, title, onPressNo, onPressYe
         <ThemedView style={styles.btnsContainer}>
           <ThemedButton 
             btnText={noTxt}
+            txtColor={colorScheme === 'dark' ? 'black' : 'white'}
             onPress={onPressNo}
           />
           <ThemedButton 
             btnText={yesTxt}
+            txtColor={colorScheme === 'dark' ? 'black' : 'white'}
             onPress={onPressYes}
           />
         </ThemedView>

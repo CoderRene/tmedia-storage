@@ -14,7 +14,7 @@ export function ThemedButton({ style, ...rest }: ThemedButtonProps) {
 
   return (
     <TouchableOpacity style={[{ padding: 8, width: '20%', backgroundColor: color, marginLeft: 4, marginEnd: 4, borderRadius: 5}, style]} {...rest}>
-      <ThemedText type='default' style={{ textAlign: 'center', color: rest.txtColor || backgroundColor}}>{rest.btnText}</ThemedText>
+      <ThemedText type='default' style={{ textAlign: 'center', color: rest.txtColor || color}}>{rest.btnText}</ThemedText>
     </TouchableOpacity>
   )
 }

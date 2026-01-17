@@ -59,6 +59,20 @@ export function useIndexService() {
     }
   }
 
+  const fixFoldersMedia = async (folder: string) => {
+    try {
+      const response = await axios.post(`${API_URL}/home/fix_folders`, {}, {
+        params: {
+          folder
+        }
+      });
+      return response.data.payload;
+    } catch (err) {
+      console.error('Error:', err);
+      return undefined;
+    }
+  }
+
   const chunkFolderItemsUpload = async (folder: string, items: RNFS.ReadDirItem[], onProgress: (progress: number) => void, onComplete: (isError: boolean) => void) => {
     const chunk = 10;
     let offset = 0;
@@ -99,7 +113,7 @@ export function useIndexService() {
         data.append('creationDates', (item.mtime || new Date()).toISOString());
         data.append('isVideoValues', isVideo + '');
       }
-      
+
       try {
         await axios.post(`${API_URL}/folder/media/multiple_upload`, data, {
           headers: {
@@ -129,5 +143,5 @@ export function useIndexService() {
     onComplete(hasError);
   }
 
-  return { getHomeFolders, addHomeFolder, chunkFolderItemsUpload, deleteHomeFolder, editHomeFolder};
+  return { getHomeFolders, addHomeFolder, chunkFolderItemsUpload, deleteHomeFolder, editHomeFolder, fixFoldersMedia };
 }
