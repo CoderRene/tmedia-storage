@@ -11,9 +11,10 @@ export type AlbumCardProps = TouchableOpacityProps &  {
   folder: string;
   thumbnailPath: string;
   iconColor: string;
+  fileCount?: number;
 }
 
-const AlbumCardMemo = memo(({ folder, thumbnailPath, iconColor, ...rest }: AlbumCardProps) => {
+const AlbumCardMemo = memo(({ folder, thumbnailPath, iconColor, fileCount, ...rest }: AlbumCardProps) => {
 
   return (
     <TouchableOpacity style={styles.listItem} key={folder}
@@ -28,14 +29,15 @@ const AlbumCardMemo = memo(({ folder, thumbnailPath, iconColor, ...rest }: Album
           />
         )}
         <ThemedText type='default'>{folder}</ThemedText>
+        <ThemedText type='default' style={styles.fileCount}>{fileCount ?? 0} file(s)</ThemedText>
     </TouchableOpacity>
   )
 }, (prevProps, nextProps) => {
-
-  if (prevProps.folder !== nextProps.folder || prevProps.thumbnailPath !== nextProps.thumbnailPath) 
+  // Re-render when folder, thumbnailPath or fileCount changes
+  if (prevProps.folder !== nextProps.folder || prevProps.thumbnailPath !== nextProps.thumbnailPath || prevProps.fileCount !== nextProps.fileCount)
     return false;
 
-  else return true;
+  return true;
 });
 
 const styles = StyleSheet.create({
@@ -49,7 +51,14 @@ const styles = StyleSheet.create({
     width: 100, 
     height: 100, 
     borderRadius: 5
-  }
+  },
+  fileCount: {
+    position: 'absolute',
+    bottom: 8,
+    right: 20,
+    fontSize: 12,
+    color: '#888',
+  },
 });
 
 export default AlbumCardMemo;

@@ -2,12 +2,47 @@ import axios from "axios";
 import { Asset } from "react-native-image-picker";
 import { MediaType } from "./folder";
 import Toast from "react-native-toast-message";
+// @ts-ignore
+import RNExif from 'react-native-exif';
 
 const API_URL = process.env.EXPO_PUBLIC_API_ENDPOINT;
 
 export function useFolderService() {
   const uploadMedia = async (folder: string, media: Asset, isVideo: boolean, onProgress: (progress: string) => void) => {
+    // Get actual creation date from media timestamp or EXIF if available
+    let creationDate = new Date(media.timestamp || Date.now()).toISOString();
+    if (!isVideo) {
+      try {
+        let exif = await RNExif.getExif(media.uri);
+        console.log('exif: ', exif);
+        exif = exif.exif;
+
+        console.log('exif: ', exif.DateTime);
+        
+        if (exif.DateTimeOriginal) {
+          const parts = exif.DateTimeOriginal.split(' ');
+          const datePart = parts[0].replace(/:/g, '-');
+          const timePart = parts[1];
+          const formattedDate = `${datePart}T${timePart}`;
+          creationDate = new Date(formattedDate).toISOString();
+        } else if (exif.DateTime) {
+          const parts = exif.DateTime.split(' ');
+          const datePart = parts[0].replace(/:/g, '-');
+          const timePart = parts[1];
+          const formattedDate = `${datePart}T${timePart}`;
+          console.log('format: ', formattedDate);
+          
+          creationDate = new Date(formattedDate).toISOString();
+          console.log('date: ', creationDate);
+        }
+      } catch (e) {
+        // Fallback to timestamp if EXIF read fails
+        console.warn('Failed to read EXIF for', media.uri, e);
+      }
+    }
+
     const data = new FormData();
+    // @ts-ignore
     data.append('file', {
       uri: media.uri,
       type: media.type,
@@ -22,7 +57,7 @@ export function useFolderService() {
         params: {
           isVideo,
           folder: folder,
-          creationDate: new Date().toISOString(),
+          creationDate,
         },
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
@@ -32,13 +67,13 @@ export function useFolderService() {
 
       onProgress('100');
       return true;
-    } catch (err) {
+    } catch (err: any) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to upload media',
+        text2: err.message,
       });
-      console.error("Failed to upload media", err);
+      console.error("Failed to upload media", err.message);
       return null;
     }
   }

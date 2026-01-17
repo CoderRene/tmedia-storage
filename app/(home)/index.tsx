@@ -25,7 +25,7 @@ import { ThemedConfirmationModal } from '@/components/ThemedConfirmationModal';
 const API_URL = process.env.EXPO_PUBLIC_API_ENDPOINT;
 
 export default function HomeScreen() {
-	const [homeFolders, setHomeFolders] = useState<{ folder: string, thumbnailPath: string }[]>([]);
+	const [homeFolders, setHomeFolders] = useState<{ folder: string, thumbnailPath: string, fileCount: number }[]>([]);
 	const [toggleAddFolder, setToggleAddFolder] = useState(false);
 	const [isContactingServer, setIsContactingServer] = useState(false);
 	const [openFolderSelection, setOpenFolderSelection] = useState(false);
@@ -121,7 +121,7 @@ export default function HomeScreen() {
 			return;
 		}
 
-		setHomeFolders([...homeFolders, { folder: inputText, thumbnailPath: 'undefined' }]);
+		setHomeFolders([...homeFolders, { folder: inputText, thumbnailPath: 'undefined', fileCount: 0 }]);
 
 		Toast.show({
 			type: 'success',
@@ -169,7 +169,7 @@ export default function HomeScreen() {
 
 		setHomeFolders(homeFolders.map((folder) => {
 			if (folder.folder === grabbedAlbumInfo.folder) {
-				return { folder: grabbedAlbumInfo.folder, thumbnailPath: grabbedAlbumInfo.thumbnailPath };
+				return { folder: grabbedAlbumInfo.folder, thumbnailPath: grabbedAlbumInfo.thumbnailPath, fileCount: folder.fileCount };
 			}
 			return folder;
 		}));
@@ -217,7 +217,7 @@ export default function HomeScreen() {
 		}, 800);
 	}
 
-	const renderAlbums = useCallback(({ item }: { item: { folder: string; thumbnailPath: string } }) => (
+	const renderAlbums = useCallback(({ item }: { item: { folder: string; thumbnailPath: string; fileCount: number } }) => (
 		<AlbumCardMemo
 			onPress={() => {
 				dispatch({ type: ActionType.SELECT_FOLDER, payload: item.folder });
@@ -230,6 +230,7 @@ export default function HomeScreen() {
 			folder={item.folder}
 			thumbnailPath={item.thumbnailPath}
 			iconColor={iconColor}
+			fileCount={item.fileCount}
 		/>
 	), [homeFolders]);
 

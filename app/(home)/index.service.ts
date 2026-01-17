@@ -2,6 +2,8 @@ import axios from "axios";
 import RNFS from 'react-native-fs';
 import mime from 'react-native-mime-types';
 import Toast from "react-native-toast-message";
+// @ts-ignore
+import RNExif from 'react-native-exif';
 
 const API_URL = process.env.EXPO_PUBLIC_API_ENDPOINT;
 
@@ -102,15 +104,41 @@ export function useIndexService() {
 
       const data = new FormData();
       for (const item of itemsChunk) {
-        const _mime = mime.lookup(item.path);
+        const _mime = mime.lookup(item.path) || 'application/octet-stream';
         const isVideo = _mime && _mime?.startsWith('video');
 
+        // @ts-ignore
         data.append('files', {
           uri: `file://${item.path}`,
           type: _mime,
           name: item.name,
         });
-        data.append('creationDates', (item.mtime || new Date()).toISOString());
+
+        // Get actual creation date from file times or EXIF if available
+        let creationDate = item.ctime || item.mtime || new Date();
+        if (!isVideo) {
+          try {
+            const exif = await RNExif.getExif(`file://${item.path}`);
+            if (exif.DateTimeOriginal) {
+              const parts = exif.DateTimeOriginal.split(' ');
+              const datePart = parts[0].replace(/:/g, '-');
+              const timePart = parts[1];
+              const formattedDate = `${datePart}T${timePart}`;
+              creationDate = new Date(formattedDate);
+            } else if (exif.DateTime) {
+              const parts = exif.DateTime.split(' ');
+              const datePart = parts[0].replace(/:/g, '-');
+              const timePart = parts[1];
+              const formattedDate = `${datePart}T${timePart}`;
+              creationDate = new Date(formattedDate);
+            }
+          } catch (e) {
+            // Fallback to file times if EXIF read fails
+            console.warn('Failed to read EXIF for', item.path, e);
+          }
+        }
+
+        data.append('creationDates', creationDate.toISOString());
         data.append('isVideoValues', isVideo + '');
       }
 
