@@ -1,6 +1,6 @@
 import { ThemedIcon } from "@/components/ThemedIcon";
 import { ThemedView } from "@/components/ThemedView";
-import { memo, useRef } from "react";
+import { memo } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import FastImage from "react-native-fast-image";
 import { MediaType } from "../folder";
