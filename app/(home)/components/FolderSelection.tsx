@@ -4,6 +4,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { StyleSheet, TouchableOpacity, useColorScheme, Platform } from "react-native";
 import Modal from "react-native-modal";
 import RNFS from 'react-native-fs';
+import mime from 'react-native-mime-types';
 import { useEffect, useState } from "react";
 import { Bounce, Pulse } from "react-native-animated-spinkit";
 import { ThemedButton } from "@/components/ThemedButton";
@@ -46,27 +47,47 @@ export function FolderUploadSelection({ open, onClose }: FolderSelectionProps) {
 
     const loadFolders = async () => {
       if (Platform.OS === 'android') {
-        const permission = Platform.Version >= 33 ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
-        const granted = await PermissionsAndroid.request(
-          permission,
-          {
-            title: 'Storage Permission',
-            message: 'This app needs access to your storage to read folders.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          },
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          const message = granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN 
-            ? 'Permission denied. Please enable storage permission in app settings.' 
-            : 'Cannot access storage without permission.';
-          Toast.show({
-            type: 'error',
-            text1: 'Permission Denied',
-            text2: message,
-          });
-          return;
+        if (Platform.Version >= 33) {
+          const permissions = [
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+          ];
+          const result = await PermissionsAndroid.requestMultiple(permissions);
+          const allGranted = permissions.every(p => result[p] === PermissionsAndroid.RESULTS.GRANTED);
+          if (!allGranted) {
+            const neverAsk = permissions.some(p => result[p] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN);
+            const message = neverAsk
+              ? 'Permission denied. Please enable storage permission in app settings.'
+              : 'Cannot access storage without permission.';
+            Toast.show({
+              type: 'error',
+              text1: 'Permission Denied',
+              text2: message,
+            });
+            return;
+          }
+        } else {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            {
+              title: 'Storage Permission',
+              message: 'This app needs access to your storage to read folders.',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Cancel',
+              buttonPositive: 'OK',
+            },
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            const message = granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
+              ? 'Permission denied. Please enable storage permission in app settings.'
+              : 'Cannot access storage without permission.';
+            Toast.show({
+              type: 'error',
+              text1: 'Permission Denied',
+              text2: message,
+            });
+            return;
+          }
         }
       }
 
@@ -108,7 +129,27 @@ export function FolderUploadSelection({ open, onClose }: FolderSelectionProps) {
     setTimeout(async () => {
       try {
         const result = await RNFS.readDir(item.path);
-        setFiles(result);
+        // Filter only files and media (images/videos)
+        const mediaFiles = result
+          .filter((f) => typeof (f as any).isFile === 'function' ? (f as any).isFile() : true)
+          .filter((f) => {
+            const _mime = mime.lookup(f.path) || '';
+            return _mime.startsWith('image') || _mime.startsWith('video');
+          });
+
+        if (mediaFiles.length === 0) {
+          setFiles([]);
+          setIsFetchingFiles(false);
+          setOpenConfirmation(false);
+          Toast.show({
+            type: 'info',
+            text1: 'No media found',
+            text2: 'No images or videos found in this folder.',
+          });
+          return;
+        }
+
+        setFiles(mediaFiles);
         setIsFetchingFiles(false);
       } catch (error) {
         console.error('Error reading directory:', error);
@@ -139,7 +180,7 @@ export function FolderUploadSelection({ open, onClose }: FolderSelectionProps) {
           <ThemedText type="subtitle" style={{ marginBottom: 16 }}>{isFetchingFiles ? 'Reading' : 'Confirm'}</ThemedText>
           <ThemedView style={styles.confirmationModalSubContainer}>
             {isFetchingFiles && (<Pulse size={100} color={iconColor} />)}
-            <ThemedText type="default">{isFetchingFiles ? 'Reading folder... Please wait...' : `We will about to upload ${files.length} file(s). Are you sure?`}</ThemedText>
+            <ThemedText type="default">{isFetchingFiles ? 'Reading folder... Please wait...' : `We are about to upload ${files.length} media file(s). Are you sure?`}</ThemedText>
             {!isFetchingFiles && (
               <ThemedView style={styles.confirmationModalBtns}>
                 <ThemedButton btnText="NO" txtColor={colorTheme === 'dark' ? 'black' : 'white'} onPress={() => setOpenConfirmation(false)} />

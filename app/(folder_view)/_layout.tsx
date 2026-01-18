@@ -21,6 +21,13 @@ export default function FolderViewLayout() {
       }}>
 
       <Stack.Screen name="folder" options={{header: () => <View style={{marginTop: StatusBar.currentHeight}}/>}} />
+      <Stack.Screen 
+        name="video-player" 
+        options={{
+          headerShown: false,
+          presentation: 'fullScreenModal',
+        }} 
+      />
     </Stack>
   );
 }

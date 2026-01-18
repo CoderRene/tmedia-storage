@@ -1,6 +1,6 @@
 import { ThemedIcon } from "@/components/ThemedIcon";
 import { ThemedView } from "@/components/ThemedView";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import FastImage from "react-native-fast-image";
 import { MediaType } from "../folder";
@@ -21,14 +21,24 @@ export type ImageCardProps = {
 }
 
 const ImageCard = memo(({ isSelected, item, onLongPress, onPress, onSelectImage, isImageLoaded, onImageLoad, isDeleteView }: ImageCardProps) => {
-  
   const iconColor = useThemeColor({}, 'icon');
+  const getFormattedFilePath = () => {
+    const filePathChunks = item.path.split('.');
+    const name = filePathChunks[0];
+
+    // if video, return thumbnail path
+    if (item.isVideo === 1)
+      return `${name}-thumbnail.jpg`;
+
+    // else return original image path
+    return item.path;
+  }
 
   return (
     <TouchableOpacity onLongPress={onLongPress} onPress={onPress} style={styles.sectionItemContainer}>
       <View style={styles.imageContainer}>
         <FastImage 
-          style={styles.image} source={{uri: `${API_URL}/media/${item?.path}`}}
+          style={styles.image} source={{uri: `${API_URL}/media/${getFormattedFilePath()}`}}
           onLoad={onImageLoad}
           renderToHardwareTextureAndroid={true}
         />

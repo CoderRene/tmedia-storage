@@ -1,15 +1,14 @@
 import { ThemedIcon } from '@/components/ThemedIcon';
 import { ThemedView } from '@/components/ThemedView';
-import { Link } from 'expo-router';
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useAppContext } from '../context';
 import { ThemedText } from '@/components/ThemedText';
 import Modal from "react-native-modal";
 import { Bounce } from 'react-native-animated-spinkit';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SectionGrid } from 'react-native-super-grid';
-import FastImage from 'react-native-fast-image';
 import { useFolderService } from './folder.service';
 import { Asset, launchImageLibrary } from 'react-native-image-picker';
 import EnhancedImageViewing from 'react-native-image-viewing/dist/ImageViewing';
@@ -17,6 +16,8 @@ import { useDeletionFunc } from './hooks/useDeletionFunc';
 import ImageCard from './components/ImageCard';
 
 const API_URL = process.env.EXPO_PUBLIC_API_ENDPOINT;
+
+const screenDimensions = Dimensions.get('window');
 
 export type MediaType = {
   id: number;
@@ -30,6 +31,7 @@ export type MediaType = {
 export default function FolderView() {
   const { state } = useAppContext();
   const { getMedia, uploadMedia } = useFolderService();
+  const router = useRouter();
   const { 
     isTriggerFromSelectAll,
     deleteView, 
@@ -53,6 +55,7 @@ export default function FolderView() {
     visible: false,
     index: 0,
   });
+  const [isViewingVideo, setIsViewingVideo] = useState(false);
   
   const [media, setMedia] = useState<{[index: string]: MediaType[]}[]>([]);
   const [showProgressbarModal, setShowProgressbarModal] = useState(false);
@@ -128,7 +131,13 @@ export default function FolderView() {
    * @param index the index of the image being viewed
    */
   const onImageViewIndexChange = (index: number) => {
-    const totalMedia = media.map(item => item[Object.keys(item)[0]]).flat().length;
+    const allMedia = media.map(item => item[Object.keys(item)[0]]).flat();
+    const totalMedia = allMedia.length;
+
+    // Update whether current index is a video so overlays update correctly
+    const curr = allMedia[index];
+    setIsViewingVideo(curr?.isVideo === 1);
+
     if (index === totalMedia - 2) fetchMedia();
   }
 
@@ -226,7 +235,7 @@ export default function FolderView() {
    * Function to generate the image viewing data
    */
   const generateImageViewingData = useMemo(() => {
-    return media.map(item => item[Object.keys(item)[0]].map((mediaItem) => ({ uri: `${API_URL}/media/${mediaItem.path}` }))).flat()
+    return media.map(item => item[Object.keys(item)[0]].map((mediaItem) => ({ uri: mediaItem.isVideo ? `${API_URL}/media/${mediaItem.path.split('.')[0]}-thumbnail.jpg` : `${API_URL}/media/${mediaItem.path}` }))).flat()
   }, [media])
 
   const reset = () => {
@@ -246,7 +255,10 @@ export default function FolderView() {
         onImageLoad={() => setLoadedImages((prev) => [...prev, item.index || -1])}
         isDeleteView={deleteView}
         onLongPress={() => setDeleteView(true)}
-        onPress={() => setViewImage({index: item.index || -1, visible: true})}
+        onPress={() => {
+          setViewImage({index: item.index || 0, visible: true});
+          setIsViewingVideo(item.isVideo === 1);
+        }}
         onSelectImage={() => handleImageSelection(item)}
         item={item}
         isSelected={deletionSelected.find((a: any) => a.id === item.id) ? true : false} 
@@ -277,9 +289,34 @@ export default function FolderView() {
         images={generateImageViewingData}
         imageIndex={viewImage.index}
         visible={viewImage.visible} 
-        onRequestClose={() => setViewImage((prev) => ({...prev, visible: false}))}
+        onRequestClose={() => { setViewImage((prev) => ({...prev, visible: false})); setIsViewingVideo(false); }}
         keyExtractor={(_, index) => index.toString()}
         onImageIndexChange={onImageViewIndexChange}
+        FooterComponent={({ imageIndex }) => {
+          const allMedia = media.map(item => item[Object.keys(item)[0]]).flat();
+          const currentMedia = allMedia[imageIndex];
+
+          // Only render if parent state says the current item is a video
+          if (!isViewingVideo || currentMedia?.isVideo !== 1) return null;
+
+          return (
+            <View style={styles.footerWrapper} pointerEvents="box-none">
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={() => {
+                  setIsViewingVideo(false);
+                  setViewImage(prev => ({...prev, visible: false}));
+                  router.push({
+                    pathname: '/(folder_view)/video-player',
+                    params: { uri: `${API_URL}/media/${currentMedia.path}` }
+                  });
+                }}
+              >
+                <ThemedIcon name={'play'} color={'#DC143C'} size={50}/>
+              </TouchableOpacity>
+            </View>
+          )
+        }}
       />
 
       <ThemedView nativeID='header' style={styles.headerContainer}>
@@ -348,6 +385,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  footerWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateY: -screenDimensions.height * .55}],
+  },
+  playButton: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerContainer: {
     flexDirection: 'row',

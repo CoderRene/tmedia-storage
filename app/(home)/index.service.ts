@@ -150,6 +150,14 @@ export function useIndexService() {
           params: {
             folder,
           },
+          onUploadProgress: (progressEvent) => {
+            // Compute overall progress across all chunks and report as number
+            const loaded = progressEvent.loaded || 0;
+            const total = progressEvent.total || 1;
+            const chunkFraction = loaded / total;
+            const overallProgress = Math.round(((offset + chunkFraction * itemsChunk.length) / Math.max(items.length, 1)) * 100);
+            onProgress(overallProgress);
+          },
         });
       } catch (err) {
         hasError = true;

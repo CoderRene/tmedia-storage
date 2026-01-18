@@ -31,10 +31,10 @@ export function useFolderService() {
           creationDate = new Date(formattedDate).toISOString();
         }
       } catch (e) {
-        // Fallback to timestamp if EXIF read fails
         console.warn('Failed to read EXIF for', media.uri, e);
       }
     }
+    
 
     const data = new FormData();
     // @ts-ignore
