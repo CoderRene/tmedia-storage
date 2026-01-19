@@ -6,7 +6,6 @@ import Toast from "react-native-toast-message";
 import RNExif from 'react-native-exif';
 import RNFS from 'react-native-fs';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_ENDPOINT;
 
@@ -101,21 +100,12 @@ export function useFolderService() {
           text2: 'Enable notifications to see download progress',
         });
       } else {
-        // create channel on Android (must exist before sending)
-        if (Platform.OS === 'android') {
-          await Notifications.setNotificationChannelAsync('downloads', {
-            name: 'Downloads',
-            importance: Notifications.AndroidImportance.MAX,
-          });
-        }
-
-        // keep track of a single notification id so progress updates replace the same notification
+        // notification channel is already created at app startup
         // present an initial notification
-        await Notifications.scheduleNotificationAsync({
+        const id = await Notifications.scheduleNotificationAsync({
           content: {
             title: 'Downloading',
             body: `Downloading... ${fileName}`,
-            sticky: true,
             color: '#2196F3',
           },
           trigger: null,
@@ -136,7 +126,7 @@ export function useFolderService() {
         const result = await dl.promise;
         if (result.statusCode === 200) {
 
-          await Notifications.dismissAllNotificationsAsync();
+          await Notifications.dismissNotificationAsync(id);
           await Notifications.scheduleNotificationAsync({
             content: {
               title: 'Download Complete',

@@ -4,6 +4,8 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Toast from 'react-native-toast-message';
@@ -11,6 +13,16 @@ import { AppProvider } from './app-provider';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Initialize notification channel for Android at app startup
+const initializeNotifications = async () => {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('downloads', {
+      name: 'Downloads',
+      importance: Notifications.AndroidImportance.MAX,
+    });
+  }
+};
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -21,6 +33,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      initializeNotifications();
     }
   }, [loaded]);
 
