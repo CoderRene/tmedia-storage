@@ -4,8 +4,21 @@ import { MediaType } from "./folder";
 import Toast from "react-native-toast-message";
 // @ts-ignore
 import RNExif from 'react-native-exif';
+import RNFS from 'react-native-fs';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_ENDPOINT;
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowAlert: true,
+    priority: Notifications.AndroidNotificationPriority.MAX,
+  }),
+});
 
 export function useFolderService() {
   const uploadMedia = async (folder: string, media: Asset, isVideo: boolean, onProgress: (progress: string) => void) => {
@@ -72,6 +85,74 @@ export function useFolderService() {
       return null;
     }
   }
+
+  const downloadMedia = async (path: string, onProgress?: (progress: number) => void) => {
+    try {
+      const fileName = path.split('/').pop();
+      const uri = `${API_URL}/media/${encodeURIComponent(path)}`;
+      const dest = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+
+      // request permission (Android 13 and iOS)
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Toast.show({
+          type: 'error',
+          text1: 'Notifications disabled',
+          text2: 'Enable notifications to see download progress',
+        });
+      } else {
+        // create channel on Android (must exist before sending)
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('downloads', {
+            name: 'Downloads',
+            importance: Notifications.AndroidImportance.MAX,
+          });
+        }
+
+        // keep track of a single notification id so progress updates replace the same notification
+        // present an initial notification
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Downloading',
+            body: `Downloading... ${fileName}`,
+            sticky: true,
+            color: '#2196F3',
+          },
+          trigger: null,
+        });
+
+        const dl = RNFS.downloadFile({
+          fromUrl: uri,
+          toFile: dest,
+          progressDivider: 1,
+          progress: async (res) => {
+            const pct = res.contentLength ? (res.bytesWritten / res.contentLength) * 100 : null;
+            if (pct !== null) {
+              onProgress?.(pct);
+            }
+          },
+        });
+        
+        const result = await dl.promise;
+        if (result.statusCode === 200) {
+
+          await Notifications.dismissAllNotificationsAsync();
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Download Complete',
+              body: `File downloaded to ${dest}`,
+              color: '#4CAF50',
+            },
+            trigger: null,
+          });
+        } else {
+          throw new Error(`Download failed with status code ${result.statusCode}`);
+        }
+      }
+    } catch (err) {
+      
+    }
+  }
   
   const getMedia = async (folder: string, offset: number, limit: number) => {
     try {
@@ -107,5 +188,5 @@ export function useFolderService() {
     }
   }
 
-  return { uploadMedia, getMedia, deleteMedia };
+  return { uploadMedia, getMedia, deleteMedia, downloadMedia };
 }

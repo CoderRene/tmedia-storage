@@ -21,23 +21,23 @@ const screenDimensions = Dimensions.get('window');
 
 export type MediaType = {
   id: number;
-  name:string;
-  path:string;
-  date:string;
-  index?:number;
-  isVideo:number;
+  name: string;
+  path: string;
+  date: string;
+  index?: number;
+  isVideo: number;
 }
 
 export default function FolderView() {
   const { state } = useAppContext();
-  const { getMedia, uploadMedia } = useFolderService();
+  const { getMedia, uploadMedia, downloadMedia } = useFolderService();
   const router = useRouter();
-  const { 
+  const {
     isTriggerFromSelectAll,
-    deleteView, 
-    deletionSelected, 
+    deleteView,
+    deletionSelected,
     handleDeleteImage,
-    setDeleteView, 
+    setDeleteView,
     setDeletionSelected,
     isSelectAll,
     setIsSelectAll,
@@ -56,12 +56,16 @@ export default function FolderView() {
     index: 0,
   });
   const [isViewingVideo, setIsViewingVideo] = useState(false);
-  
-  const [media, setMedia] = useState<{[index: string]: MediaType[]}[]>([]);
+
+  const [media, setMedia] = useState<{ [index: string]: MediaType[] }[]>([]);
   const [showProgressbarModal, setShowProgressbarModal] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({
     total: 0,
     done: 1,
+    progress: '0%',
+  });
+  const [downloadProgress, setDownloadProgress] = useState({
+    isDownloading: false,
     progress: '0%',
   });
   const [pagination, setPagination] = useState({
@@ -88,7 +92,7 @@ export default function FolderView() {
     if (!data) return;
 
     // group by date
-    const groupedMedia: {[index: string]: MediaType[]} = {};
+    const groupedMedia: { [index: string]: MediaType[] } = {};
     for (const mediaItem of data as any) {
       const date = new Date(mediaItem.date).toDateString();
       if (!groupedMedia[date]) groupedMedia[date] = [];
@@ -98,13 +102,13 @@ export default function FolderView() {
     // if the date already exists, append data to the existing date
     const mediaCopy = [...media];
     for (const key in groupedMedia) {
-      const _media = mediaCopy.find((item) => Object.keys(item).find(a => a === key) );
-      
+      const _media = mediaCopy.find((item) => Object.keys(item).find(a => a === key));
+
       if (_media) {
         _media[key] = [..._media[key], ...groupedMedia[key]];
-        mediaCopy.splice(mediaCopy.findIndex((item) => Object.keys(item).find(a => a === key)), 1, {[key]: _media[key]});
+        mediaCopy.splice(mediaCopy.findIndex((item) => Object.keys(item).find(a => a === key)), 1, { [key]: _media[key] });
       } else {
-        mediaCopy.push({[key]: groupedMedia[key]});
+        mediaCopy.push({ [key]: groupedMedia[key] });
       }
     }
 
@@ -165,27 +169,27 @@ export default function FolderView() {
    * @param media the selected media to upload
    */
   const startUploading = async (media: Asset[]) => {
-    setUploadProgress((prev) => ({...prev, total: media.length}));
+    setUploadProgress((prev) => ({ ...prev, total: media.length }));
 
     let done = 0;
     for (const mediaItem of media) {
       const isVideo = mediaItem.type?.startsWith('video');
 
-      const result = await uploadMedia(state.selectedFolder, mediaItem, isVideo || false, 
+      const result = await uploadMedia(state.selectedFolder, mediaItem, isVideo || false,
         (progress) => {
-          setUploadProgress((prev) => ({...prev, progress: progress}));
+          setUploadProgress((prev) => ({ ...prev, progress: progress }));
         });
 
       if (result) {
         done++;
-        setUploadProgress((prev) => ({...prev, done: done}));
-      } 
+        setUploadProgress((prev) => ({ ...prev, done: done }));
+      }
     }
 
     reset();
     setTimeout(() => {
       setShowProgressbarModal(false);
-      setUploadProgress((prev) => ({...prev, done: 1, progress: '0%'}));
+      setUploadProgress((prev) => ({ ...prev, done: 1, progress: '0%' }));
     }, 1000);
   }
 
@@ -198,28 +202,28 @@ export default function FolderView() {
     media.forEach((item, index) => {
       const key = Object.keys(item)[0];
       const itemCopy = [...item[key]];
-      
+
       item[key].forEach((mediaItem, index2) => {
         const prevBatchIndex = index === 0 ? 0 : index - 1;
 
         if (index === 0 && prevBatchIndex === 0) {
-          itemCopy.splice(index2, 1, {...mediaItem, index: index2});
+          itemCopy.splice(index2, 1, { ...mediaItem, index: index2 });
           return;
         }
 
         if (index2 === 0) {
           const prevBatch = mediaCopy[prevBatchIndex][Object.keys(mediaCopy[prevBatchIndex])[0]];
           const prevBatchLastItemIndex = prevBatch[prevBatch.length - 1]?.index;
-          
-          itemCopy.splice(index2, 1, {...mediaItem, index: (prevBatchLastItemIndex || 0) + 1});
+
+          itemCopy.splice(index2, 1, { ...mediaItem, index: (prevBatchLastItemIndex || 0) + 1 });
           return;
         }
 
         const prevItemIndex = itemCopy[index2 - 1].index;
-        itemCopy.splice(index2, 1, {...mediaItem, index: (prevItemIndex || -1) + 1});
+        itemCopy.splice(index2, 1, { ...mediaItem, index: (prevItemIndex || -1) + 1 });
       });
 
-      mediaCopy.splice(index, 1, {[key]: itemCopy});
+      mediaCopy.splice(index, 1, { [key]: itemCopy });
     })
 
     return mediaCopy.map((item) => {
@@ -256,21 +260,22 @@ export default function FolderView() {
         isDeleteView={deleteView}
         onLongPress={() => setDeleteView(true)}
         onPress={() => {
-          setViewImage({index: item.index || 0, visible: true});
+          setViewImage({ index: item.index || 0, visible: true });
           setIsViewingVideo(item.isVideo === 1);
         }}
         onSelectImage={() => handleImageSelection(item)}
         item={item}
-        isSelected={deletionSelected.find((a: any) => a.id === item.id) ? true : false} 
+        isSelected={deletionSelected.find((a: any) => a.id === item.id) ? true : false}
       />
-  )}, [isSelectAll, deletionSelected, deleteView, loadedImages]);
+    )
+  }, [isSelectAll, deletionSelected, deleteView, loadedImages]);
 
   return (
     <ThemedView nativeID='root' style={styles.container}>
       <Modal isVisible={showProgressbarModal}>
         <ThemedView style={styles.modalContainer}>
           <Bounce size={100} color={iconColor} />
-          <ThemedView style={{alignItems: 'center'}}>
+          <ThemedView style={{ alignItems: 'center' }}>
             <ThemedText>Uploading... {uploadProgress.done} out of {uploadProgress.total}</ThemedText>
             <ThemedText>{uploadProgress.progress}%</ThemedText>
           </ThemedView>
@@ -285,36 +290,63 @@ export default function FolderView() {
         </ThemedView>
       </Modal>
 
-      <EnhancedImageViewing 
+      <EnhancedImageViewing
         images={generateImageViewingData}
         imageIndex={viewImage.index}
-        visible={viewImage.visible} 
-        onRequestClose={() => { setViewImage((prev) => ({...prev, visible: false})); setIsViewingVideo(false); }}
+        visible={viewImage.visible}
+        onRequestClose={() => {
+          if (downloadProgress.isDownloading) return; // prevent closing if downloading
+
+          setViewImage((prev) => ({ ...prev, visible: false })); 
+          setIsViewingVideo(false); 
+        }}
         keyExtractor={(_, index) => index.toString()}
         onImageIndexChange={onImageViewIndexChange}
         FooterComponent={({ imageIndex }) => {
           const allMedia = media.map(item => item[Object.keys(item)[0]]).flat();
           const currentMedia = allMedia[imageIndex];
 
-          // Only render if parent state says the current item is a video
-          if (!isViewingVideo || currentMedia?.isVideo !== 1) return null;
-
-          return (
-            <View style={styles.footerWrapper} pointerEvents="box-none">
+          const downloadBtnUI = (
+            <View style={styles.downloadFooterWrapper} pointerEvents="box-none">
               <TouchableOpacity
-                style={styles.playButton}
+                style={styles.downloadButton}
                 onPress={() => {
-                  setIsViewingVideo(false);
-                  setViewImage(prev => ({...prev, visible: false}));
-                  router.push({
-                    pathname: '/(folder_view)/video-player',
-                    params: { uri: `${API_URL}/media/${currentMedia.path}` }
-                  });
+                  downloadMedia(currentMedia.path);
                 }}
               >
-                <ThemedIcon name={'play'} color={'#DC143C'} size={50}/>
+                <ThemedIcon name={'cloud-download'} color={'#00FF00'} size={18} />
+                <ThemedText color={'#00FF00'} fontSize={11}>Download</ThemedText>
               </TouchableOpacity>
             </View>
+          );
+
+          // Only render if parent state says the current item is a video
+          if (!isViewingVideo || currentMedia?.isVideo !== 1)
+            return (
+              <>
+                {downloadBtnUI}
+              </>
+            );
+
+          return (
+            <>
+              {downloadBtnUI}
+              <ThemedView style={styles.footerWrapper} pointerEvents="box-none">
+                <TouchableOpacity
+                  style={styles.playButton}
+                  onPress={() => {
+                    setIsViewingVideo(false);
+                    setViewImage(prev => ({ ...prev, visible: false }));
+                    router.push({
+                      pathname: '/(folder_view)/video-player',
+                      params: { uri: `${API_URL}/media/${currentMedia.path}` }
+                    });
+                  }}
+                >
+                  <ThemedIcon name={'play'} color={'#DC143C'} size={50} />
+                </TouchableOpacity>
+              </ThemedView>
+            </>
           )
         }}
       />
@@ -341,7 +373,7 @@ export default function FolderView() {
               <ThemedIcon name="close" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.selectAllContainer} 
+            <TouchableOpacity style={styles.selectAllContainer}
               onPress={() => {
                 isTriggerFromSelectAll.current = true;
                 setIsSelectAll(!isSelectAll);
@@ -367,7 +399,7 @@ export default function FolderView() {
         )}
         <SectionGrid
           itemDimension={140}
-          scrollIndicatorInsets={{top: 10, bottom: 10}}
+          scrollIndicatorInsets={{ top: 10, bottom: 10 }}
           onEndReached={() => fetchMedia()}
           onEndReachedThreshold={0.8}
           sections={generateSectionsGridData}
@@ -391,9 +423,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ translateY: -screenDimensions.height * .55}],
+    transform: [{ translateY: -screenDimensions.height * .55 }],
+  },
+  downloadFooterWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 20,
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   playButton: {
     width: 100,
@@ -402,6 +444,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  downloadButton: {
+    width: 'auto',
+    height: 35,
+    paddingHorizontal: 10,
+    columnGap: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   headerContainer: {
     flexDirection: 'row',
@@ -427,7 +480,7 @@ const styles = StyleSheet.create({
     marginTop: 100,
   },
   selectAllContainer: {
-    flexDirection: 'row', 
+    flexDirection: 'row',
     alignItems: 'center'
   }
 });

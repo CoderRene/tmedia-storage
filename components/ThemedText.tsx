@@ -6,6 +6,7 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
   color?: string;
+  fontSize?: number;
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
   colorType?: 'text' | 'background' | 'tint' | 'icon' | 'tabIconDefault' | 'tabIconSelected'
 };
@@ -14,6 +15,7 @@ export function ThemedText({
   style,
   lightColor,
   darkColor,
+  fontSize,
   type = 'default',
   colorType = 'text',
   ...rest
@@ -30,6 +32,7 @@ export function ThemedText({
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
         style,
+        fontSize ? { fontSize } : undefined,
       ]}
       {...rest}
     />
